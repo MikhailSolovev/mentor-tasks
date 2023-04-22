@@ -1,0 +1,15 @@
+fileName: "result"
+bufferSize: 10
+workers: 10
+timeout: 2s
+retries: 2
+urls:
+  - "https://www.avito.ru/"
+  - "https://www.ozon.ru/"
+  - "https://vk.com/"
+  - "https://yandex.ru/"
+  - "https://www.google.com/"
+  - "https://www.wildberries.ru/"
+  - "https://tr.aliexpress.com/"
+  - "http://example.com"
+  - "http://hfewfewfwef.ru"
