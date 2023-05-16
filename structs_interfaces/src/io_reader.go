@@ -3,6 +3,7 @@ package src
 import (
 	"errors"
 	"io"
+	"strings"
 )
 
 type Reader interface {
@@ -26,7 +27,7 @@ func (cr *CountingToLowerReaderImpl) Read(p []byte) (int, error) {
 	n, err := cr.Reader.Read(p)
 	if err != nil {
 		if !errors.Is(err, io.EOF) {
-			return 0, nil
+			return 0, err
 		}
 	}
 
@@ -38,20 +39,25 @@ func (cr *CountingToLowerReaderImpl) Read(p []byte) (int, error) {
 
 func (cr *CountingToLowerReaderImpl) ReadAll(bufSize int) (string, error) {
 	buffer := make([]byte, bufSize)
-	_str := ""
+	var _str strings.Builder
 	for {
 		n, err := cr.Read(buffer)
 		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				return _str, err
+			if errors.Is(err, io.EOF) {
+				_str.Grow(n)
+				if _, err = _str.Write(buffer[:n]); err != nil {
+					return _str.String(), err
+				}
+				return _str.String(), err
 			}
-			_str += string(buffer[:n])
-			break
-		}
-		_str += string(buffer[:n])
-	}
 
-	return _str, nil
+			return _str.String(), err
+		}
+		_str.Grow(n)
+		if _, err = _str.Write(buffer[:n]); err != nil {
+			return _str.String(), err
+		}
+	}
 }
 
 func (cr *CountingToLowerReaderImpl) BytesRead() int64 {
