@@ -43,11 +43,13 @@ func (m *Monitor) Run(ctx context.Context) error {
 	m.G.SetLimit(MaxGoroutines)
 
 	m.G.Go(func() error {
+		ticker := time.NewTicker(m.RequestFrequency)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-time.After(m.RequestFrequency):
+			case <-ticker.C:
 				err := m.checkSites(ctx)
 				if err != nil {
 					return err
@@ -57,11 +59,13 @@ func (m *Monitor) Run(ctx context.Context) error {
 	})
 
 	m.G.Go(func() error {
+		ticker := time.NewTicker(PrintTimeout)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-time.After(PrintTimeout):
+			case <-ticker.C:
 				err := m.printStatuses(ctx)
 				if err != nil {
 					return err
@@ -87,15 +91,27 @@ func (m *Monitor) checkSites(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			resp, err := client.Get(site)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, site, nil)
 			if err != nil {
 				return err
+			}
+
+			resp, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+
+			if resp.Body != nil {
+				err = resp.Body.Close()
+				if err != nil {
+					return err
+				}
 			}
 
 			newSiteStatus := SiteStatus{
 				Name:          site,
 				StatusCode:    resp.StatusCode,
-				TimeOfRequest: time.Now(),
+				TimeOfRequest: time.Now().Truncate(time.Second),
 			}
 
 			m.Mtx.Lock()
